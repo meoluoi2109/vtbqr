@@ -227,7 +227,10 @@
         <div class="panel-body" data-p="download" hidden>
           <div class="section">
             <div class="section-title">⬇️ Tải ảnh QR</div>
-            <p style="font-size:12px; color: var(--muted); margin-bottom:8px;">Tải ảnh QR Code</p>
+            <p style="font-size:12px; color: var(--muted); margin-bottom:8px;">
+              • Android/PC: ấn nút dưới để tải ảnh PNG.<br>
+              • iOS: ấn nút, hệ thống sẽ mở ảnh ra tab mới → chạm giữ vào ảnh &gt; Lưu hình ảnh.
+            </p>
             <button class="btn" id="exportBtn" type="button">⬇️ Tải PNG</button>
           </div>
         </div>
@@ -252,6 +255,10 @@
   const aliasVal = $('aliasVal');
   const footer = $('footer');
   const f1 = $('f1'), f2 = $('f2'), f3 = $('f3');
+
+  // ===== Phát hiện iOS (iPhone/iPad/Safari iOS) =====
+  const isIOS = /iP(ad|hone|od)/i.test(navigator.userAgent) ||
+    (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
 
   // ===== Tabs =====
   const tabs = $('tabs');
@@ -569,11 +576,12 @@
 
   async function toDataURL(url){ const res = await fetch(url,{cache:'no-store'}); const blob = await res.blob(); return await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob); }); }
 
+  // ===== Export: Android/PC tải, iOS mở tab mới để lưu =====
   $('exportBtn').addEventListener('click', async ()=>{
     const TARGET_W=1360, TARGET_H=2040;
     const sb = $('smartbar'); const prevSB = sb.style.display; sb.style.display='none';
     if(qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')){
-      try{ const dataUrl = await toDataURL(qrEl.src); await new Promise(res=>{ qrEl.onload=()=>res(); qrEl.src=dataUrl; }); }catch(e){ console.warn(e); }
+      try{ const dataUrlQR = await toDataURL(qrEl.src); await new Promise(res=>{ qrEl.onload=()=>res(); qrEl.src=dataUrlQR; }); }catch(e){ console.warn(e); }
     }
     await new Promise(r=>requestAnimationFrame(r));
     const rect = card.getBoundingClientRect();
@@ -595,7 +603,32 @@
       out = tmp;
     }
     const acc=(accInput.value||'').replace(/\D/g,'') || 'VietinBank';
-    const a=document.createElement('a'); a.href=out.toDataURL('image/png'); a.download=`VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`; a.click();
+    const dataUrl = out.toDataURL('image/png');
+
+    if(isIOS){
+      // iOS: mở ảnh ra tab mới, người dùng tự lưu bằng "Chạm giữ > Lưu hình ảnh"
+      const w = window.open('', '_blank');
+      if(w){
+        w.document.title = 'Giữ để lưu ảnh QR';
+        w.document.body.style.margin = '0';
+        const img = w.document.createElement('img');
+        img.src = dataUrl;
+        img.style.display = 'block';
+        img.style.width = '100%';
+        img.style.height = 'auto';
+        w.document.body.appendChild(img);
+      } else {
+        alert('Trình duyệt đang chặn cửa sổ mới, hãy tắt chặn popup rồi thử lại.');
+      }
+    } else {
+      // Android / PC: tải file PNG như bình thường
+      const a=document.createElement('a');
+      a.href=dataUrl;
+      a.download=`VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
   });
   </script>
 
