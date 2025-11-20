@@ -568,36 +568,107 @@
   });
 
   async function toDataURL(url){ const res = await fetch(url,{cache:'no-store'}); const blob = await res.blob(); return await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob); }); }
+  function isIOS() {
+    const ua = window.navigator.userAgent || '';
+    const platform = window.navigator.platform || '';
+    // iPhone/iPad/iPod hoặc iPadOS (MacIntel nhưng có touch)
+    return /iPad|iPhone|iPod/.test(ua) ||
+          (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
 
-  $('exportBtn').addEventListener('click', async ()=>{
-    const TARGET_W=1360, TARGET_H=2040;
-    const sb = $('smartbar'); const prevSB = sb.style.display; sb.style.display='none';
-    if(qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')){
-      try{ const dataUrl = await toDataURL(qrEl.src); await new Promise(res=>{ qrEl.onload=()=>res(); qrEl.src=dataUrl; }); }catch(e){ console.warn(e); }
+  $('exportBtn').addEventListener('click', async () => {
+  const TARGET_W = 1360, TARGET_H = 2040;
+
+  // Ẩn smartbar khi chụp
+  const sb = $('smartbar');
+  const prevSB = sb.style.display;
+  sb.style.display = 'none';
+
+  // Đảm bảo QR dùng dataURL (tránh lỗi CORS)
+  if (qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')) {
+    try {
+      const dataUrl = await toDataURL(qrEl.src);
+      await new Promise(res => {
+        qrEl.onload = () => res();
+        qrEl.src = dataUrl;
+      });
+    } catch (e) {
+      console.warn(e);
     }
-    await new Promise(r=>requestAnimationFrame(r));
-    const rect = card.getBoundingClientRect();
-    const scale = TARGET_W / rect.width;
-    const canvas = await html2canvas(card,{
-      backgroundColor:null, useCORS:true, allowTaint:false, scale, logging:false,
-      onclone: (doc)=>{
-        const img = doc.getElementById('bgImg'); if(img){ img.style.height='100%'; img.style.width='auto'; img.style.left='50%'; img.style.transform='translateX(-50%)'; img.style.top='0'; }
+  }
+
+  // Đợi layout ổn định
+  await new Promise(r => requestAnimationFrame(r));
+
+  const rect = card.getBoundingClientRect();
+  const scale = TARGET_W / rect.width;
+
+  const canvas = await html2canvas(card, {
+    backgroundColor: null,
+    useCORS: true,
+    allowTaint: false,
+    scale,
+    logging: false,
+    onclone: (doc) => {
+      const img = doc.getElementById('bgImg');
+      if (img) {
+        img.style.height = '100%';
+        img.style.width = 'auto';
+        img.style.left = '50%';
+        img.style.transform = 'translateX(-50%)';
+        img.style.top = '0';
       }
-    });
-    sb.style.display = prevSB;
-    let out = canvas;
-    if(canvas.width !== TARGET_W || canvas.height !== TARGET_H){
-      const tmp = document.createElement('canvas');
-      tmp.width = TARGET_W; tmp.height = TARGET_H;
-      const ctx = tmp.getContext('2d');
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
-      out = tmp;
     }
-    const acc=(accInput.value||'').replace(/\D/g,'') || 'VietinBank';
-    const a=document.createElement('a'); a.href=out.toDataURL('image/png'); a.download=`VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`; a.click();
   });
-  </script>
 
+  // Hiện lại smartbar
+  sb.style.display = prevSB;
+
+  // Chuẩn hóa kích thước canvas xuất ra
+  let out = canvas;
+  if (canvas.width !== TARGET_W || canvas.height !== TARGET_H) {
+    const tmp = document.createElement('canvas');
+    tmp.width = TARGET_W;
+    tmp.height = TARGET_H;
+    const ctx = tmp.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
+    out = tmp;
+  }
+
+  const acc = (accInput.value || '').replace(/\D/g, '') || 'VietinBank';
+  const fileName = `VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`;
+  const dataURL = out.toDataURL('image/png');
+
+  if (isIOS()) {
+    // iOS: mở ảnh ra tab mới, user nhấn giữ để lưu
+    const newTab = window.open('', '_blank');
+    if (newTab) {
+      newTab.document.write(`
+        <html>
+          <head><title>${fileName}</title></head>
+          <body style="margin:0; background:#000; display:flex; align-items:center; justify-content:center;">
+            <img src="${dataURL}" style="max-width:100%; height:auto; display:block;" />
+            <p style="position:fixed; bottom:8px; left:0; right:0; text-align:center; color:#fff; font-family:sans-serif; font-size:14px;">
+              Nhấn và giữ vào ảnh để lưu về máy.
+            </p>
+          </body>
+        </html>
+      `);
+      newTab.document.close();
+    } else {
+      alert('Trình duyệt đang chặn cửa sổ mới. Hãy cho phép mở cửa sổ mới để lưu ảnh.');
+    }
+  } else {
+    // Windows + Android + các trình duyệt hỗ trợ download attribute
+    const link = document.createElement('a');
+    link.href = dataURL;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+});
+  </script>
 </body>
 </html>
