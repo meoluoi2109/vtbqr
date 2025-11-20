@@ -569,216 +569,195 @@
 
   async function toDataURL(url){ const res = await fetch(url,{cache:'no-store'}); const blob = await res.blob(); return await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob); }); }
 
-  // ===== Detect iOS =====
-function isIOS() {
-  const ua = window.navigator.userAgent || '';
-  const platform = window.navigator.platform || '';
-  // iPhone / iPad / iPod + iPadOS (MacIntel + touch)
-  const isiOSDevice = /iPhone|iPad|iPod/i.test(ua);
-  const isIPadOS = platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-  return isiOSDevice || isIPadOS;
-}
-
-// ===== Hiển thị ảnh lớn + hướng dẫn lưu trên iOS =====
-function showDirectImageDownload(dataUrl, filename) {
-  const container = document.createElement('div');
-  container.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.95);
-    z-index: 10000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  `;
-
-  container.innerHTML = `
-    <div style="background: white; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; text-align: center;">
-      <h3 style="margin: 0 0 15px 0; color: #0b7cc2;">QR Code VietinBank</h3>
+  // ===== Ultimate iOS Solution =====
+  $('exportBtn').addEventListener('click', async function() {
+    const TARGET_W = 1360, TARGET_H = 2040;
+    
+    // Hiển thị trạng thái loading
+    const originalText = this.textContent;
+    this.textContent = '🔄 Đang xử lý...';
+    this.disabled = true;
+    
+    try {
+      // Ẩn smartbar tạm thời
+      const sb = $('smartbar'); 
+      const prevSB = sb.style.display; 
+      sb.style.display = 'none';
       
-      <div style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 14px;">
-        <strong>📱 Hướng dẫn lưu ảnh trên iOS:</strong><br><br>
-        1. <strong>Chạm và giữ</strong> vào ảnh bên dưới<br>
-        2. Chọn <strong>"Lưu Ảnh"</strong> từ menu<br>
-        3. Ảnh sẽ được lưu vào Thư viện ảnh của bạn
+      // Đợi một chút để đảm bảo UI đã cập nhật
+      await new Promise(r => setTimeout(r, 100));
+      
+      const rect = card.getBoundingClientRect();
+      const scale = TARGET_W / rect.width;
+      
+      const canvas = await html2canvas(card, {
+        backgroundColor: null, 
+        useCORS: true, 
+        allowTaint: false, 
+        scale: scale, 
+        logging: false,
+        onclone: (doc) => {
+          const img = doc.getElementById('bgImg'); 
+          if(img) { 
+            img.style.height = '100%'; 
+            img.style.width = 'auto'; 
+            img.style.left = '50%'; 
+            img.style.transform = 'translateX(-50%)'; 
+            img.style.top = '0'; 
+          }
+        }
+      });
+      
+      let out = canvas;
+      if(canvas.width !== TARGET_W || canvas.height !== TARGET_H){
+        const tmp = document.createElement('canvas');
+        tmp.width = TARGET_W; 
+        tmp.height = TARGET_H;
+        const ctx = tmp.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
+        out = tmp;
+      }
+      
+      const acc = (accInput.value || '').replace(/\D/g, '') || 'VietinBank';
+      const filename = `VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`;
+      
+      // PHƯƠNG PHÁP CUỐI CÙNG: Chuyển hướng trực tiếp đến data URL
+      const dataUrl = out.toDataURL('image/png');
+      
+      // Tạo một iframe ẩn để tải ảnh
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = dataUrl;
+      document.body.appendChild(iframe);
+      
+      // Hiển thị ảnh trực tiếp trên trang và hướng dẫn
+      showDirectImageDownload(dataUrl, filename);
+      
+    } catch (error) {
+      console.error('Export error:', error);
+      // Phương pháp dự phòng cực kỳ đơn giản
+      showSimpleInstructions();
+    } finally {
+      // Khôi phục smartbar
+      const sb = $('smartbar');
+      sb.style.display = 'block';
+      
+      // Khôi phục trạng thái nút
+      setTimeout(() => {
+        $('exportBtn').textContent = originalText;
+        $('exportBtn').disabled = false;
+      }, 2000);
+    }
+  });
+
+  // Phương pháp đơn giản nhất: hiển thị ảnh lớn và hướng dẫn
+  function showDirectImageDownload(dataUrl, filename) {
+    // Tạo container
+    const container = document.createElement('div');
+    container.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.95);
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    `;
+    
+    // Tạo nội dung
+    container.innerHTML = `
+      <div style="background: white; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; text-align: center;">
+        <h3 style="margin: 0 0 15px 0; color: #0b7cc2;">QR Code VietinBank</h3>
+        
+        <div style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 14px;">
+          <strong>📱 Hướng dẫn lưu ảnh trên iOS:</strong><br><br>
+          1. <strong>Chạm và giữ</strong> vào ảnh bên dưới<br>
+          2. Chọn <strong>"Lưu Ảnh"</strong> từ menu<br>
+          3. Ảnh sẽ được lưu vào Thư viện ảnh của bạn
+        </div>
+        
+        <img src="${dataUrl}" alt="QR Code" style="max-width: 100%; height: auto; border: 2px solid #ddd; border-radius: 8px;">
+        
+        <div style="margin-top: 20px;">
+          <button id="closeOverlay" style="
+            background: #0b7cc2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+          ">Đóng</button>
+        </div>
       </div>
-      
-      <img src="${dataUrl}" alt="QR Code" style="max-width: 100%; height: auto; border: 2px solid #ddd; border-radius: 8px;">
-      
-      <div style="margin-top: 20px;">
-        <button id="closeOverlay" style="
+    `;
+    
+    document.body.appendChild(container);
+    
+    // Xử lý đóng overlay
+    container.querySelector('#closeOverlay').onclick = function() {
+      document.body.removeChild(container);
+    };
+    
+    // Đóng khi click ra ngoài
+    container.onclick = function(e) {
+      if (e.target === container) {
+        document.body.removeChild(container);
+      }
+    };
+  }
+
+  // Phương pháp dự phòng siêu đơn giản
+  function showSimpleInstructions() {
+    const message = `
+      <div style="
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        z-index: 10000;
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+      ">
+        <h3 style="color: #0b7cc2; margin-bottom: 20px;">Hướng Dẫn Lưu Ảnh</h3>
+        <div style="text-align: left; margin-bottom: 25px; font-size: 14px; line-height: 1.6;">
+          <p>📸 <strong>Để lưu ảnh QR Code trên iOS:</strong></p>
+          <ol style="margin-left: 20px;">
+            <li>Chụp màn hình ứng dụng này</li>
+            <li>Mở ảnh trong Thư viện ảnh</li>
+            <li>Cắt ảnh để chỉ lấy phần QR Code</li>
+            <li>Lưu ảnh đã cắt</li>
+          </ol>
+        </div>
+        <button onclick="this.parentElement.remove()" style="
           background: #0b7cc2;
           color: white;
           border: none;
-          padding: 12px 24px;
+          padding: 12px 30px;
           border-radius: 8px;
           font-size: 16px;
           cursor: pointer;
           font-weight: bold;
-        ">Đóng</button>
+        ">Đã Hiểu</button>
       </div>
-    </div>
-  `;
-
-  document.body.appendChild(container);
-
-  container.querySelector('#closeOverlay').onclick = function () {
-    document.body.removeChild(container);
-  };
-
-  container.onclick = function (e) {
-    if (e.target === container) {
-      document.body.removeChild(container);
-    }
-  };
-}
-
-// ===== Phương án dự phòng siêu đơn giản cho iOS (lỗi html2canvas) =====
-function showSimpleInstructions() {
-  const message = `
-    <div style="
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      z-index: 10000;
-      max-width: 400px;
-      width: 90%;
-      text-align: center;
-    ">
-      <h3 style="color: #0b7cc2; margin-bottom: 20px;">Hướng Dẫn Lưu Ảnh</h3>
-      <div style="text-align: left; margin-bottom: 25px; font-size: 14px; line-height: 1.6;">
-        <p>📸 <strong>Để lưu ảnh QR Code trên iOS:</strong></p>
-        <ol style="margin-left: 20px;">
-          <li>Chụp màn hình ứng dụng này</li>
-          <li>Mở ảnh trong Thư viện ảnh</li>
-          <li>Cắt ảnh để chỉ lấy phần QR Code</li>
-          <li>Lưu ảnh đã cắt</li>
-        </ol>
-      </div>
-      <button onclick="this.parentElement.remove()" style="
-        background: #0b7cc2;
-        color: white;
-        border: none;
-        padding: 12px 30px;
-        border-radius: 8px;
-        font-size: 16px;
-        cursor: pointer;
-        font-weight: bold;
-      ">Đã Hiểu</button>
-    </div>
-  `;
-
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = message;
-  document.body.appendChild(tempDiv.firstElementChild);
-}
-
-// ===== Handler chung: Android + Windows tải như cũ, iOS dùng overlay =====
-$('exportBtn').addEventListener('click', async function () {
-  const TARGET_W = 1360, TARGET_H = 2040;
-  const sb = $('smartbar');
-  const prevSB = sb.style.display;
-
-  const originalText = this.textContent;
-  this.textContent = '🔄 Đang xử lý...';
-  this.disabled = true;
-
-  try {
-    // Ẩn smartbar cho sạch ảnh
-    sb.style.display = 'none';
-
-    // Đảm bảo QR là dataURL (tránh CORS)
-    if (qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')) {
-      try {
-        const dataUrl = await toDataURL(qrEl.src);
-        await new Promise(res => {
-          qrEl.onload = () => res();
-          qrEl.src = dataUrl;
-        });
-      } catch (e) {
-        console.warn('QR toDataURL error:', e);
-      }
-    }
-
-    // Đợi UI cập nhật xong
-    await new Promise(r => requestAnimationFrame(r));
-
-    const rect = card.getBoundingClientRect();
-    const scale = TARGET_W / rect.width;
-
-    const canvas = await html2canvas(card, {
-      backgroundColor: null,
-      useCORS: true,
-      allowTaint: false,
-      scale: scale,
-      logging: false,
-      onclone: (doc) => {
-        const img = doc.getElementById('bgImg');
-        if (img) {
-          img.style.height = '100%';
-          img.style.width = 'auto';
-          img.style.left = '50%';
-          img.style.transform = 'translateX(-50%)';
-          img.style.top = '0';
-        }
-      }
-    });
-
-    let out = canvas;
-    if (canvas.width !== TARGET_W || canvas.height !== TARGET_H) {
-      const tmp = document.createElement('canvas');
-      tmp.width = TARGET_W;
-      tmp.height = TARGET_H;
-      const ctx = tmp.getContext('2d');
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
-      out = tmp;
-    }
-
-    const acc = (accInput.value || '').replace(/\D/g, '') || 'VietinBank';
-    const filename = `VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`;
-    const dataUrl = out.toDataURL('image/png');
-
-    if (isIOS()) {
-      // === iOS: hiển thị ảnh + hướng dẫn chạm-giữ ===
-      showDirectImageDownload(dataUrl, filename);
-    } else {
-      // === Android + Windows: tải file PNG trực tiếp như code cũ ===
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-
-  } catch (error) {
-    console.error('Export error:', error);
-    if (isIOS()) {
-      showSimpleInstructions();
-    } else {
-      alert('Có lỗi khi xuất ảnh, vui lòng thử lại.');
-    }
-  } finally {
-    // Khôi phục smartbar & nút
-    sb.style.display = prevSB;
-    setTimeout(() => {
-      $('exportBtn').textContent = originalText;
-      $('exportBtn').disabled = false;
-    }, 500);
+    `;
+    
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = message;
+    document.body.appendChild(tempDiv.firstElementChild);
   }
-});
   </script>
-
 </body>
 </html>
