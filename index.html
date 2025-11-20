@@ -19,10 +19,9 @@
     /* Preview */
     .preview{flex-shrink:0; display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px;flex: 0 1 var(--preview-height);min-height: 350px;}
     .export-top{display:flex;gap:8px;width:100%;max-width:360px;justify-content: center}
-    .btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;border:0;border-radius:8px;background:var(--brand);color:#fff;font-weight:700;cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+    .btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;border:0;border-radius:8px;background:var(--brand);color:#fff;font-weight:700;cursor:pointer}
     .btn.muted{background:#6b7280}
     .btn.sec{background:#0f9b7b}
-    .btn:disabled{opacity:0.6;cursor:not-allowed}
 
     /* Card 2:3 — preview DOM; export will render exactly 1360×2040 */
     .card{position:relative;width:min(100%,360px);aspect-ratio:2/3;border-radius:12px;overflow:hidden;box-shadow:0 16px 40px rgba(13,63,97,.2);background:#b7dcff}
@@ -46,7 +45,7 @@
     /* Control panel */
     .controls{flex:1;display:flex;flex-direction:column;background:#fff;border-radius:12px 12px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.08);overflow:hidden;flex: 1 1 var(--controls-height);position:relative}
     .tabs{display:flex;border-bottom:1px solid #e5e7eb;background:#f9fafb;overflow-x:auto}
-    .tab{flex:1;padding:8px 10px;font-size:12px;font-weight:700;text-align:center;background:transparent;color:#6b7280;border:0;border-bottom:2px solid transparent;white-space:nowrap;min-height:44px;-webkit-tap-highlight-color:transparent}
+    .tab{flex:1;padding:8px 10px;font-size:12px;font-weight:700;text-align:center;background:transparent;color:#6b7280;border:0;border-bottom:2px solid transparent;white-space:nowrap}
     .tab.active{color:var(--brand);border-bottom-color:var(--brand);background:#fff}
     .panel{flex:1;overflow:auto;padding:10px}
     .section{background:#f9fafb;border-radius:8px;padding:8px;margin-bottom:8px}
@@ -570,131 +569,33 @@
 
   async function toDataURL(url){ const res = await fetch(url,{cache:'no-store'}); const blob = await res.blob(); return await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob); }); }
 
-  // Hàm fallback cho download
-  function fallbackDownload(dataURL, acc, width, height) {
-    const a = document.createElement('a');
-    a.href = dataURL;
-    a.download = `VietinBank_QR_${acc}_${width}x${height}.png`;
-    
-    // Thêm vào DOM trước khi click (quan trọng cho iOS)
-    document.body.appendChild(a);
-    
-    // Trigger click với delay
-    setTimeout(() => {
-      a.click();
-      // Xóa sau khi click
-      setTimeout(() => {
-        document.body.removeChild(a);
-        // Giải phóng bộ nhớ
-        URL.revokeObjectURL(a.href);
-      }, 100);
-    }, 100);
-  }
-
-  // Thêm sự kiện touch cho nút export
-  const exportBtn = $('exportBtn');
-  exportBtn.addEventListener('touchstart', function(e) {
-    e.preventDefault();
-    this.style.transform = 'scale(0.95)';
-  }, { passive: false });
-
-  exportBtn.addEventListener('touchend', function(e) {
-    e.preventDefault();
-    this.style.transform = 'scale(1)';
-    // Kích hoạt sự kiện click
-    this.click();
-  }, { passive: false });
-
   $('exportBtn').addEventListener('click', async ()=>{
     const TARGET_W=1360, TARGET_H=2040;
-    const sb = $('smartbar'); 
-    const prevSB = sb.style.display; 
-    sb.style.display='none';
-    
-    // Hiển thị thông báo đang xử lý
-    const originalText = $('exportBtn').textContent;
-    $('exportBtn').textContent = '⏳ Đang xử lý...';
-    $('exportBtn').disabled = true;
-    
-    try {
-      if(qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')){
-        try{ 
-          const dataUrl = await toDataURL(qrEl.src); 
-          await new Promise(res=>{ 
-            qrEl.onload=()=>res(); 
-            qrEl.src=dataUrl; 
-          }); 
-        }catch(e){ console.warn('QR load error:', e); }
-      }
-      
-      await new Promise(r=>requestAnimationFrame(r));
-      const rect = card.getBoundingClientRect();
-      const scale = TARGET_W / rect.width;
-      
-      const canvas = await html2canvas(card,{
-        backgroundColor:null, 
-        useCORS:true, 
-        allowTaint:false, 
-        scale, 
-        logging:false,
-        onclone: (doc)=>{
-          const img = doc.getElementById('bgImg'); 
-          if(img){ 
-            img.style.height='100%'; 
-            img.style.width='auto'; 
-            img.style.left='50%'; 
-            img.style.transform='translateX(-50%)'; 
-            img.style.top='0'; 
-          }
-        }
-      });
-      
-      let out = canvas;
-      if(canvas.width !== TARGET_W || canvas.height !== TARGET_H){
-        const tmp = document.createElement('canvas');
-        tmp.width = TARGET_W; 
-        tmp.height = TARGET_H;
-        const ctx = tmp.getContext('2d');
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
-        out = tmp;
-      }
-      
-      const acc=(accInput.value||'').replace(/\D/g,'') || 'VietinBank';
-      const dataURL = out.toDataURL('image/png');
-      
-      // Cách tải ảnh tương thích với iOS
-      if (navigator.share) {
-        // Sử dụng Web Share API trên iOS
-        try {
-          const response = await fetch(dataURL);
-          const blob = await response.blob();
-          const file = new File([blob], `VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`, { type: 'image/png' });
-          
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: 'VietinBank QR Code'
-            });
-          } else {
-            throw new Error('Web Share not supported for files');
-          }
-        } catch (shareError) {
-          console.log('Web Share failed, fallback to download:', shareError);
-          fallbackDownload(dataURL, acc, TARGET_W, TARGET_H);
-        }
-      } else {
-        fallbackDownload(dataURL, acc, TARGET_W, TARGET_H);
-      }
-      
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('Có lỗi xảy ra khi xuất ảnh: ' + error.message);
-    } finally {
-      sb.style.display = prevSB;
-      $('exportBtn').textContent = originalText;
-      $('exportBtn').disabled = false;
+    const sb = $('smartbar'); const prevSB = sb.style.display; sb.style.display='none';
+    if(qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')){
+      try{ const dataUrl = await toDataURL(qrEl.src); await new Promise(res=>{ qrEl.onload=()=>res(); qrEl.src=dataUrl; }); }catch(e){ console.warn(e); }
     }
+    await new Promise(r=>requestAnimationFrame(r));
+    const rect = card.getBoundingClientRect();
+    const scale = TARGET_W / rect.width;
+    const canvas = await html2canvas(card,{
+      backgroundColor:null, useCORS:true, allowTaint:false, scale, logging:false,
+      onclone: (doc)=>{
+        const img = doc.getElementById('bgImg'); if(img){ img.style.height='100%'; img.style.width='auto'; img.style.left='50%'; img.style.transform='translateX(-50%)'; img.style.top='0'; }
+      }
+    });
+    sb.style.display = prevSB;
+    let out = canvas;
+    if(canvas.width !== TARGET_W || canvas.height !== TARGET_H){
+      const tmp = document.createElement('canvas');
+      tmp.width = TARGET_W; tmp.height = TARGET_H;
+      const ctx = tmp.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
+      out = tmp;
+    }
+    const acc=(accInput.value||'').replace(/\D/g,'') || 'VietinBank';
+    const a=document.createElement('a'); a.href=out.toDataURL('image/png'); a.download=`VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`; a.click();
   });
   </script>
 
