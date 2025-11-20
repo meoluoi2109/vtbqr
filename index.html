@@ -598,78 +598,116 @@
     const iPadOS13Plus = platform === 'MacIntel' && navigator.maxTouchPoints > 1;
     return iOS || iPadOS13Plus;
   }
+// Nhận diện iOS (iPhone/iPad + Safari)
+function isIOS() {
+  const ua = window.navigator.userAgent || '';
+  const iOSDevice = /iPad|iPhone|iPod/.test(ua);
+  const iOSTouchMac = ua.includes('Mac') && 'ontouchend' in document;
+  return iOSDevice || iOSTouchMac;
+}
 
-  // ===== Export / Download (Android/PC: download trực tiếp; iOS: mở tab mới) =====
-  $('exportBtn').addEventListener('click', async ()=>{
-    const TARGET_W=1360, TARGET_H=2040;
-    const sb = $('smartbar'); const prevSB = sb.style.display; sb.style.display='none';
+// tải / mở ảnh tùy theo thiết bị
+function downloadCanvasImage(canvas, filename) {
+  const dataUrl = canvas.toDataURL('image/png');
 
-    // Đảm bảo QR là dataURL để html2canvas không bị chặn CORS
-    if(qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')){
-      try{
-        const dataUrl = await toDataURL(qrEl.src);
-        await new Promise(res=>{ qrEl.onload=()=>res(); qrEl.src=dataUrl; });
-      }catch(e){ console.warn(e); }
+  if (isIOS()) {
+    // iOS: mở ảnh sang tab mới để người dùng nhấn giữ → Lưu hình ảnh
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(
+        `
+        <html>
+          <head><title>${filename}</title></head>
+          <body style="margin:0;padding:0;background:#000;display:flex;align-items:center;justify-content:center;">
+            <img src="${dataUrl}" style="max-width:100%;max-height:100%;display:block;" />
+          </body>
+        </html>
+        `
+      );
+      win.document.close();
+      alert('Trên iPhone/iPad, hãy NHẤN GIỮ vào ảnh trong tab mới rồi chọn "Lưu hình ảnh" để tải về.');
+    } else {
+      // Nếu bị chặn popup thì dùng fallback
+      window.location.href = dataUrl;
     }
-
-    await new Promise(r=>requestAnimationFrame(r));
-    const rect = card.getBoundingClientRect();
-    const scale = TARGET_W / rect.width;
-    const canvas = await html2canvas(card,{
-      backgroundColor:null, useCORS:true, allowTaint:false, scale, logging:false,
-      onclone: (doc)=>{
-        const img = doc.getElementById('bgImg');
-        if(img){
-          img.style.height='100%';
-          img.style.width='auto';
-          img.style.left='50%';
-          img.style.transform='translateX(-50%)';
-          img.style.top='0';
-        }
-      }
-    });
-    sb.style.display = prevSB;
-
-    let out = canvas;
-    if(canvas.width !== TARGET_W || canvas.height !== TARGET_H){
-      const tmp = document.createElement('canvas');
-      tmp.width = TARGET_W; tmp.height = TARGET_H;
-      const ctx = tmp.getContext('2d');
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
-      out = tmp;
-    }
-
-    const acc=(accInput.value||'').replace(/\D/g,'') || 'VietinBank';
-    const dataUrl = out.toDataURL('image/png');
-
-    if(isIOSDevice()){
-      // iOS: mở ảnh ở tab mới, người dùng nhấn giữ để lưu
-      const win = window.open();
-      if(!win){
-        alert('Trình duyệt đang chặn cửa sổ mới. Hãy cho phép pop-up rồi bấm lại để lưu ảnh.');
-        return;
-      }
-      win.document.title = 'Nhấn giữ để lưu ảnh';
-      win.document.body.style.margin = '0';
-      win.document.body.style.background = '#000';
-      const img = win.document.createElement('img');
-      img.src = dataUrl;
-      img.style.width = '100%';
-      img.style.height = 'auto';
-      img.style.display = 'block';
-      img.style.maxWidth = '100%';
-      win.document.body.appendChild(img);
-    }else{
-      // Android / PC: tải trực tiếp
-      const a=document.createElement('a');
-      a.href = dataUrl;
-      a.download = `VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`;
+  } else {
+    // Các trình duyệt khác: dùng Blob + download như bình thường
+    canvas.toBlob(function (blob) {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, 'image/png');
+  }
+}
+
+  // ===== Export / Download (Android/PC: download trực tiếp; iOS: mở tab mới) =====
+  $('exportBtn').addEventListener('click', async () => {
+  const TARGET_W = 1360, TARGET_H = 2040;
+  const sb = $('smartbar');
+  const prevSB = sb.style.display;
+  sb.style.display = 'none';
+
+  // Đảm bảo QR là dataURL để html2canvas render ổn
+  if (qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')) {
+    try {
+      const dataUrl = await toDataURL(qrEl.src);
+      await new Promise(res => { 
+        qrEl.onload = () => res(); 
+        qrEl.src = dataUrl; 
+      });
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+
+  await new Promise(r => requestAnimationFrame(r));
+
+  const rect = card.getBoundingClientRect();
+  const scale = TARGET_W / rect.width;
+
+  const canvas = await html2canvas(card, {
+    backgroundColor: null,
+    useCORS: true,
+    allowTaint: false,
+    scale,
+    logging: false,
+    onclone: (doc) => {
+      const img = doc.getElementById('bgImg');
+      if (img) {
+        img.style.height = '100%';
+        img.style.width = 'auto';
+        img.style.left = '50%';
+        img.style.transform = 'translateX(-50%)';
+        img.style.top = '0';
+      }
     }
   });
+
+  sb.style.display = prevSB;
+
+  let out = canvas;
+  if (canvas.width !== TARGET_W || canvas.height !== TARGET_H) {
+    const tmp = document.createElement('canvas');
+    tmp.width = TARGET_W;
+    tmp.height = TARGET_H;
+    const ctx = tmp.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
+    out = tmp;
+  }
+
+  const acc = (accInput.value || '').replace(/\D/g, '') || 'VietinBank';
+  const filename = `VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`;
+
+  // 🔽 Dùng cách 3: iOS mở tab mới, trình duyệt khác tải về
+  downloadCanvasImage(out, filename);
+});
   </script>
 </body>
 </html>
