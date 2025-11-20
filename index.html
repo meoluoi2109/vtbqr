@@ -570,104 +570,115 @@
   async function toDataURL(url){ const res = await fetch(url,{cache:'no-store'}); const blob = await res.blob(); return await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob); }); }
 
   $('exportBtn').addEventListener('click', async ()=>{
-  const TARGET_W=1360, TARGET_H=2040;
-  
-  // Hiển thị thông báo đang xử lý
-  const originalText = $('exportBtn').textContent;
-  $('exportBtn').textContent = '⏳ Đang xử lý...';
-  $('exportBtn').disabled = true;
-  
-  try {
-    const sb = $('smartbar'); 
-    const prevSB = sb.style.display; 
-    sb.style.display='none';
-    
-    // Xử lý QR code external
-    if(qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')){
-      try{ 
-        const dataUrl = await toDataURL(qrEl.src); 
-        await new Promise(res=>{ 
-          qrEl.onload=()=>res(); 
-          qrEl.src=dataUrl; 
-        }); 
-      }catch(e){ console.warn('QR load error:', e); }
-    }
-    
-    await new Promise(r=>requestAnimationFrame(r));
-    
-    const rect = card.getBoundingClientRect();
-    const scale = TARGET_W / rect.width;
-    
-    const canvas = await html2canvas(card,{
-      backgroundColor:null, 
-      useCORS:true, 
-      allowTaint:false, 
-      scale, 
-      logging:false,
-      onclone: (doc)=>{
-        const img = doc.getElementById('bgImg'); 
-        if(img){ 
-          img.style.height='100%'; 
-          img.style.width='auto'; 
-          img.style.left='50%'; 
-          img.style.transform='translateX(-50%)'; 
-          img.style.top='0'; 
-        }
+    const btn = $('exportBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = 'â³ Äang xá»­ lÃ½...';
+    btn.disabled = true;
+
+    try {
+      const TARGET_W=1360, TARGET_H=2040;
+      const sb = $('smartbar'); const prevSB = sb.style.display; sb.style.display='none';
+      
+      // Convert QR image to data URL trước
+      if(qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')){
+        try{ 
+          const dataUrl = await toDataURL(qrEl.src); 
+          await new Promise(res=>{ qrEl.onload=()=>res(); qrEl.onerror=()=>res(); qrEl.src=dataUrl; }); 
+        }catch(e){ console.warn('QR convert error:', e); }
       }
-    });
-    
-    sb.style.display = prevSB;
-    
-    let out = canvas;
-    if(canvas.width !== TARGET_W || canvas.height !== TARGET_H){
-      const tmp = document.createElement('canvas');
-      tmp.width = TARGET_W; 
-      tmp.height = TARGET_H;
-      const ctx = tmp.getContext('2d');
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
-      out = tmp;
+      
+      await new Promise(r=>requestAnimationFrame(r));
+      const rect = card.getBoundingClientRect();
+      const scale = TARGET_W / rect.width;
+      
+      const canvas = await html2canvas(card,{
+        backgroundColor:null, 
+        useCORS:true, 
+        allowTaint:false, 
+        scale, 
+        logging:false,
+        imageTimeout: 0,
+        onclone: (doc)=>{
+          const img = doc.getElementById('bgImg'); 
+          if(img){ 
+            img.style.height='100%'; 
+            img.style.width='auto'; 
+            img.style.left='50%'; 
+            img.style.transform='translateX(-50%)'; 
+            img.style.top='0'; 
+          }
+        }
+      });
+      
+      sb.style.display = prevSB;
+      
+      let out = canvas;
+      if(canvas.width !== TARGET_W || canvas.height !== TARGET_H){
+        const tmp = document.createElement('canvas');
+        tmp.width = TARGET_W; tmp.height = TARGET_H;
+        const ctx = tmp.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
+        out = tmp;
+      }
+      
+      // iOS-friendly download
+      const acc=(accInput.value||'').replace(/\D/g,'') || 'VietinBank';
+      const filename = `VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`;
+      
+      // Kiểm tra nếu là iOS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      
+      if(isIOS) {
+        // iOS: Mở ảnh trong tab mới, user có thể long-press để save
+        const dataUrl = out.toDataURL('image/png');
+        const newWindow = window.open();
+        if(newWindow) {
+          newWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>${filename}</title>
+              <style>
+                body { margin:0; padding:20px; background:#000; text-align:center; }
+                img { max-width:100%; height:auto; }
+                p { color:#fff; font-family:system-ui; margin-top:20px; }
+              </style>
+            </head>
+            <body>
+              <img src="${dataUrl}" alt="VietinBank QR">
+              <p>Nháº¥n giá»¯ áº£nh vÃ  chá»n "LÆ°u áº£nh" Ä'á»ƒ táº£i vá»</p>
+            </body>
+            </html>
+          `);
+        } else {
+          alert('Vui lÃ²ng cho phÃ©p má»Ÿ cá»­a sá»• má»›i Ä'á»ƒ táº£i áº£nh');
+        }
+      } else {
+        // Desktop/Android: Download trực tiếp
+        out.toBlob((blob) => {
+          if(blob) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+          }
+        }, 'image/png');
+      }
+      
+    } catch(error) {
+      console.error('Export error:', error);
+      alert('Lá»—i khi xuáº¥t áº£nh: ' + error.message);
+    } finally {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
     }
-    
-    const acc=(accInput.value||'').replace(/\D/g,'') || 'VietinBank';
-    const filename = `VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`;
-    
-    // Phương pháp tương thích iOS
-    if(/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) {
-      // iOS - mở ảnh trong tab mới và hướng dẫn người dùng lưu thủ công
-      const dataUrl = out.toDataURL('image/png');
-      const newWindow = window.open();
-      newWindow.document.write(`
-        <html>
-          <head><title>Tải ảnh QR</title></head>
-          <body style="margin:0; padding:20px; background:#f0f0f0; text-align:center;">
-            <h3>Ảnh QR Code của bạn</h3>
-            <p>Trên iOS, nhấn giữ vào ảnh và chọn "Lưu Ảnh"</p>
-            <img src="${dataUrl}" style="max-width:100%; border:1px solid #ccc; margin:10px 0;" alt="QR Code">
-            <p><button onclick="window.close()" style="padding:10px 20px; background:#007AFF; color:white; border:none; border-radius:5px;">Đóng</button></p>
-          </body>
-        </html>
-      `);
-    } else {
-      // Android & Desktop - download bình thường
-      const dataUrl = out.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-    
-  } catch (error) {
-    console.error('Export error:', error);
-    alert('Có lỗi xảy ra khi xuất ảnh. Vui lòng thử lại.');
-  } finally {
-    // Khôi phục trạng thái nút
-    $('exportBtn').textContent = originalText;
-    $('exportBtn').disabled = false;
-  }
-});
+  });
   </script>
 </body>
 </html>
