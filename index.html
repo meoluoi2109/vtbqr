@@ -235,10 +235,10 @@
     </section>
   </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-<script>
+  <script>
   const $ = id => document.getElementById(id);
   const card = $('card');
   const bgImg = $('bgImg');
@@ -352,38 +352,11 @@
 
   // ===== Gallery / Background loader =====
   const images=[]; let selectedIdx=-1;
-  function renderGallery(){
-    $('gallery').innerHTML = images.map((src,i)=>`
-      <div class="g-item ${i===selectedIdx?'selected':''}" onclick="selectImg(${i})">
-        <img loading="lazy" decoding="async" src="${src}">
-        <button class="g-del" onclick="event.stopPropagation();delImg(${i})">×</button>
-      </div>`).join('');
-    $('gallerySummary').textContent = `🖼️ Thư viện (${images.length})`;
-  }
+  function renderGallery(){ $('gallery').innerHTML = images.map((src,i)=>`<div class="g-item ${i===selectedIdx?'selected':''}" onclick="selectImg(${i})"><img loading="lazy" decoding="async" src="${src}"><button class=\"g-del\" onclick=\"event.stopPropagation();delImg(${i})\">×</button></div>`).join('');
+    $('gallerySummary').textContent = `🖼️ Thư viện (${images.length})`; }
   window.selectImg=(i)=>{ selectedIdx=i; bgImg.src = images[i]; renderGallery(); };
-  window.delImg=(i)=>{
-    images.splice(i,1);
-    if(selectedIdx===i){
-      selectedIdx=images.length?0:-1;
-      if(selectedIdx>=0) selectImg(selectedIdx); else setDefaultBG();
-    } else if(selectedIdx>i) selectedIdx--;
-    renderGallery();
-  };
-  function addFilesToGallery(files){
-    if(!files||!files.length) return;
-    let first=images.length===0;
-    for(const f of files){
-      if(f?.type?.startsWith('image/')){
-        const r=new FileReader();
-        r.onload=e=>{
-          images.push(e.target.result);
-          renderGallery();
-          if(first){ selectImg(0); first=false; }
-        };
-        r.readAsDataURL(f);
-      }
-    }
-  }
+  window.delImg=(i)=>{ images.splice(i,1); if(selectedIdx===i){ selectedIdx=images.length?0:-1; if(selectedIdx>=0) selectImg(selectedIdx); else setDefaultBG(); } else if(selectedIdx>i) selectedIdx--; renderGallery(); };
+  function addFilesToGallery(files){ if(!files||!files.length) return; let first=images.length===0; for(const f of files){ if(f?.type?.startsWith('image/')){ const r=new FileReader(); r.onload=e=>{ images.push(e.target.result); renderGallery(); if(first){ selectImg(0); first=false; } }; r.readAsDataURL(f); } } }
   $('pickBg').onclick = ()=> $('bgFile').click();
   $('pickDir').onclick = ()=> $('dirPicker').click();
   $('bgFile').onchange = (e)=> addFilesToGallery([...e.target.files]);
@@ -413,11 +386,7 @@
     const mo = meta('gh-owner'); const mr = meta('gh-repo');
     if(mo && mr) return {owner: mo, repo: mr};
     const {hostname, pathname} = window.location; const parts = pathname.split('/').filter(Boolean);
-    if(hostname.endsWith('.github.io') && parts.length>0){
-      const owner = hostname.split('.')[0];
-      const repo  = parts[0];
-      return {owner, repo};
-    }
+    if(hostname.endsWith('.github.io') && parts.length>0){ const owner = hostname.split('.')[0]; const repo  = parts[0]; return {owner, repo}; }
     return null;
   }
   async function listImagesViaGitHubAPI(){
@@ -426,11 +395,9 @@
     for(const br of branches){
       const api = `https://api.github.com/repos/${info.owner}/${info.repo}/contents/${GITHUB_SOURCE_DIR}?ref=${br}`;
       try{
-        const res = await fetch(api, {headers:{'Accept':'application/vnd.github+json'}, cache:'no-store'});
-        if(!res.ok) continue;
+        const res = await fetch(api, {headers:{'Accept':'application/vnd.github+json'}, cache:'no-store'}); if(!res.ok) continue;
         const arr = await res.json(); if(!Array.isArray(arr)) continue;
-        const imgs = arr.filter(x=>x.type==='file' && /\.(png|jpe?g|webp|svg)$/i.test(x.name))
-                        .map(x=>({ name:x.name, raw:`https://raw.githubusercontent.com/${info.owner}/${info.repo}/${br}/${GITHUB_SOURCE_DIR}/${encodeURIComponent(x.name)}` }));
+        const imgs = arr.filter(x=>x.type==='file' && /\.(png|jpe?g|webp|svg)$/i.test(x.name)).map(x=>({ name:x.name, raw:`https://raw.githubusercontent.com/${info.owner}/${info.repo}/${br}/${GITHUB_SOURCE_DIR}/${encodeURIComponent(x.name)}` }));
         if(imgs.length) return imgs;
       }catch(e){ /* try next branch */ }
     }
@@ -448,7 +415,7 @@
     return false;
   }
 
-  // ===== Smartbar =====
+// ===== Smartbar =====
   let selectedId = null;
   const smartbar = $('smartbar');
   const smartTitle = $('smartTitle');
@@ -462,13 +429,7 @@
   const nudgeDown = $('nudgeDown');
   const nudgeLeft = $('nudgeLeft');
   const nudgeRight = $('nudgeRight');
-  const NAME_MAP = {
-    'qrBox':'QR Code',
-    'title':'Tên người thụ hưởng',
-    'accountLine':'Số tài khoản',
-    'aliasLine':'Alias',
-    'footer':'Footer'
-  };
+  const NAME_MAP = { 'qrBox':'QR Code', 'title':'Tên người thụ hưởng', 'accountLine':'Số tài khoản', 'aliasLine':'Alias', 'footer':'Footer' };
 
   function rgb2hex(rgb){
     const nums = (rgb||'').replace(/[^\d,]/g,'').split(',');
@@ -491,15 +452,13 @@
 
   smartColorChip.addEventListener('click', ()=> smartColor.click());
   smartColor.addEventListener('input', ()=> applySmartColor(smartColor.value));
+  
+  // REMOVED ALL DRAGGING LOGIC FOR SMARTBAR
 
   function setSelected(id){
     ['qrBox','title','accountLine','aliasLine','footer'].forEach(k=> $(k).classList.remove('selected'));
-    selectedId = id;
-    if(!id){ smartbar.style.display='none'; return; }
-    const el = $(id);
-    el.classList.add('selected');
-    smartTitle.textContent = `Chỉnh: ${NAME_MAP[id]||id}`;
-    smartCenter.checked = !!center[id];
+    selectedId = id; if(!id){ smartbar.style.display='none'; return; }
+    const el = $(id); el.classList.add('selected'); smartTitle.textContent = `Chỉnh: ${NAME_MAP[id]||id}`; smartCenter.checked = !!center[id];
     if(id==='qrBox'){
       smartSize.min=80; smartSize.max=420; smartSize.value=parseInt(getComputedStyle(qrBox).width)||200;
       smartColorWrap.style.display='none';
@@ -511,72 +470,31 @@
       smartColor.value = current; smartColorChip.style.background = current;
     }
     else{
-      const current = parseInt(getComputedStyle(el).fontSize);
-      smartSize.min=10; smartSize.max=48; smartSize.value=current||14;
+      const current = parseInt(getComputedStyle(el).fontSize); smartSize.min=10; smartSize.max=48; smartSize.value=current||14;
       smartColorWrap.style.display='grid';
       const c = rgb2hex(getComputedStyle(el).color); smartColor.value=c; smartColorChip.style.background=c;
     }
     smartbar.style.display='block';
   }
   ['qrBox','title','accountLine','aliasLine','footer'].forEach(id=> $(id).addEventListener('click', (e)=>{ e.stopPropagation(); setSelected(id); }));
-  document.body.addEventListener('click', (e)=>{
-    if(!e.target.closest('.smartbar') && !e.target.closest('.panel') && !e.target.closest('.tabs')) {
-      setSelected(null);
-    }
-  });
+  document.body.addEventListener('click', (e)=>{ if(!e.target.closest('.smartbar') && !e.target.closest('.panel') && !e.target.closest('.tabs')) { setSelected(null); } });
   $('smartClose').addEventListener('click', ()=> setSelected(null));
 
   smartSize.addEventListener('input', ()=>{
     if(!selectedId) return;
-    if(selectedId==='qrBox'){
-      qrUserSize = parseInt(smartSize.value,10);
-      qrBox.style.width = qrUserSize+'px';
-      qrBox.style.height = qrUserSize+'px';
-      applyCenter('qrBox');
-      return;
-    }
-    if(selectedId==='footer'){
-      footerFontPx = parseInt(smartSize.value,10);
-      [f1,f2,f3].forEach(n=> n.style.fontSize = footerFontPx + 'px');
-      return;
-    }
-    const el = $(selectedId);
-    el.style.fontSize = smartSize.value + 'px';
+    if(selectedId==='qrBox'){ qrUserSize = parseInt(smartSize.value,10); qrBox.style.width = qrUserSize+'px'; qrBox.style.height = qrUserSize+'px'; applyCenter('qrBox'); return; }
+    if(selectedId==='footer'){ footerFontPx = parseInt(smartSize.value,10); [f1,f2,f3].forEach(n=> n.style.fontSize = footerFontPx + 'px'); return; }
+    const el = $(selectedId); el.style.fontSize = smartSize.value + 'px';
   });
-  $('smartCenter').addEventListener('change', ()=>{
-    if(!selectedId) return;
-    center[selectedId] = $('smartCenter').checked;
-    applyCenter(selectedId);
-  });
+  $('smartCenter').addEventListener('change', ()=>{ if(!selectedId) return; center[selectedId] = $('smartCenter').checked; applyCenter(selectedId); });
 
   let nudgeTimer=null; const step=3;
   function nudge(id,dx,dy){
-    const el=$(id); if(!el) return;
-    const c=rectCard();
-    let left=el.style.left?parseFloat(el.style.left):(el.getBoundingClientRect().left-c.left);
-    let top =el.style.top ?parseFloat(el.style.top) :(el.getBoundingClientRect().top -c.top);
-    if(center[id]){
-      top = clamp(top + dy, 0, c.height - el.offsetHeight);
-      el.style.top = top + 'px';
-    }
-    else{
-      left = clamp(left + dx, 0, c.width - el.offsetWidth);
-      top  = clamp(top  + dy, 0, c.height - el.offsetHeight);
-      el.style.left = left + 'px';
-      el.style.top  = top  + 'px';
-      el.style.right='';
-    }
+    const el=$(id); if(!el) return; const c=rectCard(); let left=el.style.left?parseFloat(el.style.left):(el.getBoundingClientRect().left-c.left); let top=el.style.top?parseFloat(el.style.top):(el.getBoundingClientRect().top-c.top);
+    if(center[id]){ top = clamp(top + dy, 0, c.height - el.offsetHeight); el.style.top = top + 'px'; }
+    else{ left = clamp(left + dx, 0, c.width - el.offsetWidth); top = clamp(top + dy, 0, c.height - el.offsetHeight); el.style.left = left + 'px'; el.style.top = top + 'px'; el.style.right=''; }
   }
-  function hold(btn, fn){
-    const run=()=>fn();
-    btn.addEventListener('mousedown', ()=>{ run(); nudgeTimer=setInterval(run,100); });
-    document.addEventListener('mouseup', ()=>{ if(nudgeTimer){ clearInterval(nudgeTimer); nudgeTimer=null; } });
-    btn.addEventListener('touchstart', (e)=>{
-      e.preventDefault();
-      run(); nudgeTimer=setInterval(run,100);
-    }, {passive:false});
-    document.addEventListener('touchend', ()=>{ if(nudgeTimer){ clearInterval(nudgeTimer); nudgeTimer=null; } });
-  }
+  function hold(btn, fn){ const run=()=>fn(); btn.addEventListener('mousedown', ()=>{ run(); nudgeTimer=setInterval(run,100); }); document.addEventListener('mouseup', ()=>{ if(nudgeTimer){ clearInterval(nudgeTimer); nudgeTimer=null; } }); btn.addEventListener('touchstart', (e)=>{ e.preventDefault(); run(); nudgeTimer=setInterval(run,100); }, {passive:false}); document.addEventListener('touchend', ()=>{ if(nudgeTimer){ clearInterval(nudgeTimer); nudgeTimer=null; } }); }
   hold($('nudgeUp'),   ()=> selectedId && nudge(selectedId, 0,-step));
   hold($('nudgeDown'), ()=> selectedId && nudge(selectedId, 0, step));
   hold($('nudgeLeft'), ()=> selectedId && nudge(selectedId,-step, 0));
@@ -585,13 +503,7 @@
   // ===== Footer save/load =====
   const STORAGE_KEY = 'vietinbank_qr_footer_v1';
   $('footerSave').addEventListener('click', ()=>{
-    const data = {
-      visible: footerVisible.checked,
-      lines: [f1Input.value||'', f2Input.value||'', f3Input.value||''],
-      color: footerColorHex,
-      size: footerFontPx,
-      centered: !!center.footer
-    };
+    const data = { visible: footerVisible.checked, lines: [f1Input.value||'', f2Input.value||'', f3Input.value||''], color: footerColorHex, size: footerFontPx, centered: !!center.footer };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     alert('Đã lưu Footer.');
   });
@@ -605,29 +517,27 @@
       f2Input.value = data.lines?.[1] ?? f2Input.value;
       f3Input.value = data.lines?.[2] ?? f3Input.value;
       footerColorHex = data.color || footerColorHex;
-      footerFontPx   = parseInt(data.size||footerFontPx,10);
-      center.footer  = !!data.centered;
+      footerFontPx = parseInt(data.size||footerFontPx,10);
+      center.footer = !!data.centered;
       [f1,f2,f3].forEach((n,i)=> n.textContent = [f1Input.value,f2Input.value,f3Input.value][i]);
       updateAll();
       alert('Đã khôi phục Footer.');
     }catch(e){ alert('Không đọc được dữ liệu đã lưu.'); }
   });
 
-  [f1Input,f2Input,f3Input].forEach((inp,idx)=> inp.addEventListener('input', ()=>{
-    [f1,f2,f3][idx].textContent = inp.value||'';
-  }));
+  [f1Input,f2Input,f3Input].forEach((inp,idx)=> inp.addEventListener('input', ()=>{ [f1,f2,f3][idx].textContent = inp.value||''; }));
 
   // ===== Init defaults (custom) =====
   titleInput.value = 'TRẦN KIẾM BÌNH';
-  accInput.value   = '108888884567';
+  accInput.value = '108888884567';
   aliasInput.value = 'BINHTK';
-  qrUserSize       = 210;
+  qrUserSize = 210;
   center.qrBox = true;
   center.title = true;
   center.accountLine = true;
   center.aliasLine = true;
 
-  (async()=>{
+(async()=>{
     const ok = await initGalleryFromGithub();
     if(!ok){ setDefaultBG(); }
     updateQR();
@@ -642,291 +552,233 @@
     qrBox.style.transform = 'translate(0,0)';
     qrBox.style.width = qrUserSize + 'px';
     qrBox.style.height = qrUserSize + 'px';
-
     title.style.left = Math.round(c.width * 0.08) + 'px';
     title.style.top  = Math.round(c.height * 0.60) + 'px';
     title.style.fontSize = '15px';
     title.style.textAlign = 'left';
-
     accLine.style.left = Math.round(c.width * 0.08) + 'px';
     accLine.style.top  = Math.round(c.height * 0.65) + 'px';
     accLine.style.fontSize = '15px';
     accLine.style.textAlign = 'left';
-
     aliasLine.style.left = Math.round(c.width * 0.08) + 'px';
     aliasLine.style.top  = Math.round(c.height * 0.74) + 'px';
     aliasLine.style.fontSize = '14px';
     aliasLine.style.textAlign = 'left';
-
     applyCenter('qrBox'); applyCenter('title'); applyCenter('accountLine'); applyCenter('aliasLine'); applyCenter('footer');
   });
 
-  async function toDataURL(url){
-    const res = await fetch(url,{cache:'no-store'});
-    const blob = await res.blob();
-    return await new Promise(r=>{
-      const fr=new FileReader();
-      fr.onload=()=>r(fr.result);
-      fr.readAsDataURL(blob);
-    });
-  }
+  async function toDataURL(url){ const res = await fetch(url,{cache:'no-store'}); const blob = await res.blob(); return await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(blob); }); }
 
-  // ========= Phần thêm mới: Phát hiện iOS =========
-  const isIOS = /iP(hone|ad|od)/i.test(navigator.userAgent) ||
-                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  // ===== Detect iOS =====
+function isIOS() {
+  const ua = window.navigator.userAgent || '';
+  const platform = window.navigator.platform || '';
+  // iPhone / iPad / iPod + iPadOS (MacIntel + touch)
+  const isiOSDevice = /iPhone|iPad|iPod/i.test(ua);
+  const isIPadOS = platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  return isiOSDevice || isIPadOS;
+}
 
-  // ====== Hàm hiển thị overlay ảnh & hướng dẫn cho iOS ======
-  function showDirectImageDownload(dataUrl, filename) {
-    const container = document.createElement('div');
-    container.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.95);
-      z-index: 10000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    `;
-    
-    container.innerHTML = `
-      <div style="background: white; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; text-align: center;">
-        <h3 style="margin: 0 0 15px 0; color: #0b7cc2;">QR Code VietinBank</h3>
-        
-        <div style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 14px;">
-          <strong>📱 Hướng dẫn lưu ảnh trên iOS:</strong><br><br>
-          1. <strong>Chạm và giữ</strong> vào ảnh bên dưới<br>
-          2. Chọn <strong>"Lưu Ảnh"</strong> từ menu<br>
-          3. Ảnh sẽ được lưu vào Thư viện ảnh của bạn
-        </div>
-        
-        <img src="${dataUrl}" alt="QR Code" style="max-width: 100%; height: auto; border: 2px solid #ddd; border-radius: 8px;">
-        
-        <div style="margin-top: 20px;">
-          <button id="closeOverlay" style="
-            background: #0b7cc2;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            font-weight: bold;
-          ">Đóng</button>
-        </div>
+// ===== Hiển thị ảnh lớn + hướng dẫn lưu trên iOS =====
+function showDirectImageDownload(dataUrl, filename) {
+  const container = document.createElement('div');
+  container.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.95);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  `;
+
+  container.innerHTML = `
+    <div style="background: white; padding: 20px; border-radius: 12px; max-width: 500px; width: 100%; text-align: center;">
+      <h3 style="margin: 0 0 15px 0; color: #0b7cc2;">QR Code VietinBank</h3>
+      
+      <div style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 14px;">
+        <strong>📱 Hướng dẫn lưu ảnh trên iOS:</strong><br><br>
+        1. <strong>Chạm và giữ</strong> vào ảnh bên dưới<br>
+        2. Chọn <strong>"Lưu Ảnh"</strong> từ menu<br>
+        3. Ảnh sẽ được lưu vào Thư viện ảnh của bạn
       </div>
-    `;
-    
-    document.body.appendChild(container);
-    
-    container.querySelector('#closeOverlay').onclick = function() {
-      document.body.removeChild(container);
-    };
-    
-    container.onclick = function(e) {
-      if (e.target === container) {
-        document.body.removeChild(container);
-      }
-    };
-  }
-
-  // ====== Hàm dự phòng siêu đơn giản cho iOS ======
-  function showSimpleInstructions() {
-    const message = `
-      <div style="
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 30px;
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-        z-index: 10000;
-        max-width: 400px;
-        width: 90%;
-        text-align: center;
-      ">
-        <h3 style="color: #0b7cc2; margin-bottom: 20px;">Hướng Dẫn Lưu Ảnh</h3>
-        <div style="text-align: left; margin-bottom: 25px; font-size: 14px; line-height: 1.6;">
-          <p>📸 <strong>Để lưu ảnh QR Code trên iOS:</strong></p>
-          <ol style="margin-left: 20px;">
-            <li>Chụp màn hình ứng dụng này</li>
-            <li>Mở ảnh trong Thư viện ảnh</li>
-            <li>Cắt ảnh để chỉ lấy phần QR Code</li>
-            <li>Lưu ảnh đã cắt</li>
-          </ol>
-        </div>
-        <button onclick="this.parentElement.remove()" style="
+      
+      <img src="${dataUrl}" alt="QR Code" style="max-width: 100%; height: auto; border: 2px solid #ddd; border-radius: 8px;">
+      
+      <div style="margin-top: 20px;">
+        <button id="closeOverlay" style="
           background: #0b7cc2;
           color: white;
           border: none;
-          padding: 12px 30px;
+          padding: 12px 24px;
           border-radius: 8px;
           font-size: 16px;
           cursor: pointer;
           font-weight: bold;
-        ">Đã Hiểu</button>
+        ">Đóng</button>
       </div>
-    `;
-    
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = message;
-    document.body.appendChild(tempDiv.firstElementChild);
-  }
+    </div>
+  `;
 
-  // ===== Gắn sự kiện exportBtn cho từng hệ điều hành =====
-  const exportBtn = $('exportBtn');
+  document.body.appendChild(container);
 
-  if (isIOS) {
-    // ===== Ultimate iOS Solution =====
-    exportBtn.addEventListener('click', async function () {
-      const TARGET_W = 1360, TARGET_H = 2040;
+  container.querySelector('#closeOverlay').onclick = function () {
+    document.body.removeChild(container);
+  };
 
-      const originalText = this.textContent;
-      this.textContent = '🔄 Đang xử lý...';
-      this.disabled = true;
+  container.onclick = function (e) {
+    if (e.target === container) {
+      document.body.removeChild(container);
+    }
+  };
+}
 
-      const sb = $('smartbar');
-      const prevSB = sb.style.display;
+// ===== Phương án dự phòng siêu đơn giản cho iOS (lỗi html2canvas) =====
+function showSimpleInstructions() {
+  const message = `
+    <div style="
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      z-index: 10000;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+    ">
+      <h3 style="color: #0b7cc2; margin-bottom: 20px;">Hướng Dẫn Lưu Ảnh</h3>
+      <div style="text-align: left; margin-bottom: 25px; font-size: 14px; line-height: 1.6;">
+        <p>📸 <strong>Để lưu ảnh QR Code trên iOS:</strong></p>
+        <ol style="margin-left: 20px;">
+          <li>Chụp màn hình ứng dụng này</li>
+          <li>Mở ảnh trong Thư viện ảnh</li>
+          <li>Cắt ảnh để chỉ lấy phần QR Code</li>
+          <li>Lưu ảnh đã cắt</li>
+        </ol>
+      </div>
+      <button onclick="this.parentElement.remove()" style="
+        background: #0b7cc2;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        font-weight: bold;
+      ">Đã Hiểu</button>
+    </div>
+  `;
 
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = message;
+  document.body.appendChild(tempDiv.firstElementChild);
+}
+
+// ===== Handler chung: Android + Windows tải như cũ, iOS dùng overlay =====
+$('exportBtn').addEventListener('click', async function () {
+  const TARGET_W = 1360, TARGET_H = 2040;
+  const sb = $('smartbar');
+  const prevSB = sb.style.display;
+
+  const originalText = this.textContent;
+  this.textContent = '🔄 Đang xử lý...';
+  this.disabled = true;
+
+  try {
+    // Ẩn smartbar cho sạch ảnh
+    sb.style.display = 'none';
+
+    // Đảm bảo QR là dataURL (tránh CORS)
+    if (qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')) {
       try {
-        // Ẩn smartbar
-        sb.style.display = 'none';
-
-        // Đảm bảo QR không bị CORS (chuyển sang dataURL nếu cần)
-        if (qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')) {
-          try {
-            const dataUrlQR = await toDataURL(qrEl.src);
-            await new Promise(res => { qrEl.onload = () => res(); qrEl.src = dataUrlQR; });
-          } catch (e) {
-            console.warn('QR CORS issue on iOS:', e);
-          }
-        }
-
-        // Đợi UI cập nhật
-        await new Promise(r => setTimeout(r, 100));
-
-        const rect = card.getBoundingClientRect();
-        const scale = TARGET_W / rect.width;
-
-        const canvas = await html2canvas(card, {
-          backgroundColor: null,
-          useCORS: true,
-          allowTaint: false,
-          scale: scale,
-          logging: false,
-          onclone: (doc) => {
-            const img = doc.getElementById('bgImg');
-            if (img) {
-              img.style.height = '100%';
-              img.style.width = 'auto';
-              img.style.left = '50%';
-              img.style.transform = 'translateX(-50%)';
-              img.style.top = '0';
-            }
-          }
+        const dataUrl = await toDataURL(qrEl.src);
+        await new Promise(res => {
+          qrEl.onload = () => res();
+          qrEl.src = dataUrl;
         });
+      } catch (e) {
+        console.warn('QR toDataURL error:', e);
+      }
+    }
 
-        let out = canvas;
-        if (canvas.width !== TARGET_W || canvas.height !== TARGET_H) {
-          const tmp = document.createElement('canvas');
-          tmp.width = TARGET_W;
-          tmp.height = TARGET_H;
-          const ctx = tmp.getContext('2d');
-          ctx.imageSmoothingEnabled = false;
-          ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
-          out = tmp;
+    // Đợi UI cập nhật xong
+    await new Promise(r => requestAnimationFrame(r));
+
+    const rect = card.getBoundingClientRect();
+    const scale = TARGET_W / rect.width;
+
+    const canvas = await html2canvas(card, {
+      backgroundColor: null,
+      useCORS: true,
+      allowTaint: false,
+      scale: scale,
+      logging: false,
+      onclone: (doc) => {
+        const img = doc.getElementById('bgImg');
+        if (img) {
+          img.style.height = '100%';
+          img.style.width = 'auto';
+          img.style.left = '50%';
+          img.style.transform = 'translateX(-50%)';
+          img.style.top = '0';
         }
-
-        const acc = (accInput.value || '').replace(/\D/g, '') || 'VietinBank';
-        const filename = `VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`;
-        const dataUrl = out.toDataURL('image/png');
-
-        // Tạo iframe ẩn (tránh iOS chặn)
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = dataUrl;
-        document.body.appendChild(iframe);
-
-        // Hiển thị overlay + hướng dẫn lưu
-        showDirectImageDownload(dataUrl, filename);
-
-      } catch (error) {
-        console.error('Export error:', error);
-        showSimpleInstructions();
-      } finally {
-        sb.style.display = prevSB;
-        setTimeout(() => {
-          this.textContent = originalText;
-          this.disabled = false;
-        }, 2000);
       }
     });
-  } else {
-    // ===== Android / Windows / desktop: giữ như cũ (tải file PNG tự động) =====
-    exportBtn.addEventListener('click', async () => {
-      const TARGET_W=1360, TARGET_H=2040;
 
-      const sb = $('smartbar');
-      const prevSB = sb.style.display;
-      sb.style.display='none';
+    let out = canvas;
+    if (canvas.width !== TARGET_W || canvas.height !== TARGET_H) {
+      const tmp = document.createElement('canvas');
+      tmp.width = TARGET_W;
+      tmp.height = TARGET_H;
+      const ctx = tmp.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
+      out = tmp;
+    }
 
-      // Đảm bảo QR không bị CORS
-      if(qrEl && /^https?:\/\//i.test(qrEl.src) && !qrEl.src.startsWith('data:')){
-        try{
-          const dataUrl = await toDataURL(qrEl.src);
-          await new Promise(res=>{
-            qrEl.onload=()=>res();
-            qrEl.src=dataUrl;
-          });
-        }catch(e){ console.warn(e); }
-      }
+    const acc = (accInput.value || '').replace(/\D/g, '') || 'VietinBank';
+    const filename = `VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`;
+    const dataUrl = out.toDataURL('image/png');
 
-      await new Promise(r=>requestAnimationFrame(r));
-      const rect = card.getBoundingClientRect();
-      const scale = TARGET_W / rect.width;
-      const canvas = await html2canvas(card,{
-        backgroundColor:null,
-        useCORS:true,
-        allowTaint:false,
-        scale,
-        logging:false,
-        onclone: (doc)=>{
-          const img = doc.getElementById('bgImg');
-          if(img){
-            img.style.height='100%';
-            img.style.width='auto';
-            img.style.left='50%';
-            img.style.transform='translateX(-50%)';
-            img.style.top='0';
-          }
-        }
-      });
-      sb.style.display = prevSB;
-
-      let out = canvas;
-      if(canvas.width !== TARGET_W || canvas.height !== TARGET_H){
-        const tmp = document.createElement('canvas');
-        tmp.width = TARGET_W;
-        tmp.height = TARGET_H;
-        const ctx = tmp.getContext('2d');
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(canvas, 0, 0, TARGET_W, TARGET_H);
-        out = tmp;
-      }
-
-      const acc=(accInput.value||'').replace(/\D/g,'') || 'VietinBank';
-      const a=document.createElement('a');
-      a.href=out.toDataURL('image/png');
-      a.download=`VietinBank_QR_${acc}_${TARGET_W}x${TARGET_H}.png`;
+    if (isIOS()) {
+      // === iOS: hiển thị ảnh + hướng dẫn chạm-giữ ===
+      showDirectImageDownload(dataUrl, filename);
+    } else {
+      // === Android + Windows: tải file PNG trực tiếp như code cũ ===
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = filename;
+      document.body.appendChild(a);
       a.click();
-    });
+      document.body.removeChild(a);
+    }
+
+  } catch (error) {
+    console.error('Export error:', error);
+    if (isIOS()) {
+      showSimpleInstructions();
+    } else {
+      alert('Có lỗi khi xuất ảnh, vui lòng thử lại.');
+    }
+  } finally {
+    // Khôi phục smartbar & nút
+    sb.style.display = prevSB;
+    setTimeout(() => {
+      $('exportBtn').textContent = originalText;
+      $('exportBtn').disabled = false;
+    }, 500);
   }
-</script>
+});
+  </script>
+
 </body>
 </html>
