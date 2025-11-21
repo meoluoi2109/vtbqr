@@ -1162,7 +1162,7 @@
       
       document.body.appendChild(container);
       
-      // Xử lý lưu ảnh - PHƯƠNG PHÁP MỚI
+      // Xử lý lưu ảnh
       container.querySelector('#saveBtn').onclick = function() {
         // Tạo một thẻ a ẩn để tải ảnh
         const link = document.createElement('a');
@@ -1180,7 +1180,7 @@
         }, 100);
         
         // Thông báo thành công
-        alert('Ảnh đã được lưu về thiết bị của bạn!');
+        //alert('Ảnh đã được lưu về thiết bị của bạn!');
       };
       
       // Xử lý đóng overlay
@@ -1217,10 +1217,9 @@
           <div style="text-align: left; margin-bottom: 25px; font-size: 14px; line-height: 1.6;">
             <p>📸 <strong>Để lưu ảnh QR Code trên iOS:</strong></p>
             <ol style="margin-left: 20px;">
-              <li>Chụp màn hình ứng dụng này</li>
-              <li>Mở ảnh trong Thư viện ảnh</li>
-              <li>Cắt ảnh để chỉ lấy phần QR Code</li>
-              <li>Lưu ảnh đã cắt</li>
+              <li><strong>Chạm và giữ</strong> vào ảnh bên dưới</li>
+              <li>Chọn <strong>"Lưu Ảnh"</strong> từ menu</li>
+              <li>Ảnh sẽ được lưu vào Thư viện ảnh của bạn</li>
             </ol>
           </div>
           <button onclick="this.parentElement.remove()" style="
